@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>따뜻한 기본사회, 아산의 민지네 이야기</title>
+  
+  <!-- Cache Control Meta Tags -->
+  <meta http-equiv="Cache-Control" content="public, max-age=31536000">
+  <meta http-equiv="Pragma" content="cache">
+  <meta http-equiv="Expires" content="31536000">
+  
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#667eea">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="아산 이야기">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="msapplication-TileColor" content="#667eea">
+  <meta name="msapplication-config" content="/browserconfig.xml">
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+  
+  <!-- Apple Touch Icons -->
+  <link rel="apple-touch-icon" href="/icon-192x192.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="/icon-152x152.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icon-180x180.png">
+  <link rel="apple-touch-icon" sizes="167x167" href="/icon-167x167.png">
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/icon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/icon-16x16.png">
+  <style>
+    body {
+      margin: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      overflow: hidden;
+    }
+
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      z-index: 100;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+    }
+
+    header img {
+      height: 40px;
+    }
+
+    header h1 {
+      font-size: 18px;
+      margin: 0;
+      color: #333;
+      font-weight: 700;
+    }
+
+    .connection-status {
+      background: rgba(255, 193, 7, 0.9);
+      color: #333;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: auto;
+      animation: pulse 2s infinite;
+    }
+
+    .connection-status.online {
+      background: rgba(40, 167, 69, 0.9);
+      color: white;
+      animation: none;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    #flipbook {
+      position: relative;
+      width: 100vw;
+      height: calc(100vh - 180px); /* header + audio bar + bottom controls area */
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+      background-color: white;
+      margin-top: calc(130px + env(safe-area-inset-top)); /* header (~60px) + gap (10px) + audio (~50px) + gap (10px) + safe area */
+    }
+
+    #flipbook img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background-color: #fff;
+    }
+
+    /* Lazy image placeholder and fade-in */
+    .lazy-img {
+      opacity: 0;
+      transition: opacity 400ms ease;
+      background: repeating-linear-gradient(45deg, #f5f5f5, #f5f5f5 10px, #eeeeee 10px, #eeeeee 20px);
+    }
+    .lazy-img.is-loaded {
+      opacity: 1;
+      background: none;
+    }
+
+    /* Loading overlay and progress bar for each image */
+    .img-wrapper {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    .img-loading {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 4px;
+      background: rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+    .img-loading .bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      transition: width 120ms linear;
+    }
+
+    .controls {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      left: auto;
+      transform: none;
+      display: flex;
+      gap: 10px;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      padding: 12px 24px;
+      border-radius: 50px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+    }
+
+    /* Audio controls */
+    .audio-controls {
+      position: fixed;
+      top: calc(60px + env(safe-area-inset-top)); /* header height + safe area */
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 101;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(10px);
+      padding: 10px 16px;
+      border-radius: 50px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+    }
+    .audio-controls button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .audio-controls .audio-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 40px;
+    }
+    .audio-controls .speaker {
+      display: inline-block;
+      animation: speakerPulse 1.2s infinite ease-in-out;
+      opacity: 0;
+    }
+    .audio-controls .speaker.playing {
+      opacity: 1;
+    }
+    @keyframes speakerPulse {
+      0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(118,75,162,0.0)); }
+      50% { transform: scale(1.15); filter: drop-shadow(0 0 6px rgba(118,75,162,0.6)); }
+    }
+    .audio-controls .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(0,0,0,0.1);
+      border-top-color: #764ba2;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      opacity: 0;
+    }
+    .audio-controls .spinner.loading { opacity: 1; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #audioProgress {
+      width: 180px;
+      appearance: none;
+      height: 6px;
+      background: rgba(0,0,0,0.1);
+      border-radius: 4px;
+      outline: none;
+    }
+    #audioProgress::-webkit-slider-thumb {
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
+    .audio-time { font-size: 12px; color: #333; min-width: 80px; text-align: right; }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 25px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+
+    button:active {
+      transform: translateY(-1px);
+    }
+
+    /* 설문조사 링크 스타일 */
+    .survey-link {
+      position: fixed;
+      bottom: 70px;
+      left: 50%;
+      right: auto;
+      top: auto;
+      transform: translateX(-50%);
+      z-index: 99;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.4s ease;
+    }
+
+    .survey-link.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .survey-link a {
+      display: inline-block;
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+      text-decoration: none;
+      padding: 16px 36px;
+      border-radius: 30px;
+      font-size: 18px;
+      font-weight: 700;
+      box-shadow: 0 8px 25px rgba(245, 87, 108, 0.4);
+      transition: all 0.3s ease;
+      animation: pulse 2s infinite;
+    }
+
+    .survey-link a:hover {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 12px 35px rgba(245, 87, 108, 0.6);
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        box-shadow: 0 8px 25px rgba(245, 87, 108, 0.4);
+      }
+      50% {
+        box-shadow: 0 8px 35px rgba(245, 87, 108, 0.7);
+      }
+    }
+
+    @media (max-width: 768px) {
+      header {
+        padding: 8px 15px;
+      }
+
+      header img {
+        height: 32px;
+      }
+
+      header h1 {
+        font-size: 14px;
+      }
+
+      #flipbook {
+        width: 100vw;
+        height: calc(100vh - 160px); /* smaller header + audio bar + bottom controls */
+        margin-top: calc(115px + env(safe-area-inset-top)); /* header (~50px) + 10px + audio (~45px) + 10px + safe area */
+      }
+
+      .audio-controls {
+        top: calc(50px + env(safe-area-inset-top)); /* header height + safe area */
+      }
+
+      .survey-link {
+        position: fixed;
+        bottom: 60px;
+        left: 50%;
+        right: auto;
+        top: auto;
+        transform: translateX(-50%);
+      }
+
+      .survey-link a {
+        padding: 14px 28px;
+        font-size: 16px;
+      }
+
+      .controls {
+        padding: 10px 18px;
+        gap: 8px;
+        bottom: 8px;
+        right: 8px;
+        left: auto;
+        transform: none;
+      }
+
+      button {
+        padding: 8px 16px;
+        font-size: 12px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      header h1 {
+        font-size: 12px;
+      }
+
+      #flipbook {
+        height: calc(100vh - 150px);
+        margin-top: calc(105px + env(safe-area-inset-top)); /* header (~45px) + 10 + audio (~40-45) + 5-10 + safe area */
+      }
+
+      .audio-controls {
+        top: calc(45px + env(safe-area-inset-top)); /* header height + safe area */
+      }
+
+      .survey-link {
+        position: fixed;
+        bottom: 55px;
+        left: 50%;
+        right: auto;
+        top: auto;
+        transform: translateX(-50%);
+      }
+
+      .survey-link a {
+        padding: 12px 24px;
+        font-size: 14px;
+      }
+
+      button {
+        padding: 7px 14px;
+        font-size: 11px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="asan_logo.jpg" alt="아산시 로고">
+    <h1>따뜻한 기본사회이야기</h1>
+    <div id="connectionStatus" class="connection-status" style="display: none;">
+      <span id="statusText">오프라인</span>
+    </div>
+  </header>
+
+  <div id="flipbook">
+  <div class="img-wrapper"><img src="r1.webp" alt="따뜻한 기본사회이야기" loading="eager" fetchpriority="high"></div>
+  <div class="img-wrapper"><img data-src="r2.webp" alt="페이지 2" loading="lazy" class="lazy-img" src=""/><div class="img-loading"><div class="bar"></div></div></div>
+  <div class="img-wrapper"><img data-src="r3.webp" alt="페이지 3" loading="lazy" class="lazy-img" src=""/><div class="img-loading"><div class="bar"></div></div></div>
+  <div class="img-wrapper"><img data-src="r4.webp" alt="페이지 4" loading="lazy" class="lazy-img" src=""/><div class="img-loading"><div class="bar"></div></div></div>
+  <div class="img-wrapper"><img data-src="r5.webp" alt="페이지 5" loading="lazy" class="lazy-img" src=""/><div class="img-loading"><div class="bar"></div></div></div>
+  <div class="img-wrapper"><img data-src="r6.webp" alt="페이지 6" loading="lazy" class="lazy-img" src=""/><div class="img-loading"><div class="bar"></div></div></div>
+  <div class="img-wrapper"><img data-src="r7.webp" alt="페이지 7" loading="lazy" class="lazy-img" src=""/><div class="img-loading"><div class="bar"></div></div></div>
+  <div class="img-wrapper"><img data-src="r8.webp" alt="페이지 8" loading="lazy" class="lazy-img" src=""/><div class="img-loading"><div class="bar"></div></div></div>
+  <div class="img-wrapper"><img data-src="r9.webp" alt="페이지 9" loading="lazy" class="lazy-img" src=""/><div class="img-loading"><div class="bar"></div></div></div>
+  <div class="img-wrapper"><img data-src="r10.webp" alt="페이지 10" loading="lazy" class="lazy-img" src=""/><div class="img-loading"><div class="bar"></div></div></div>
+</div>
+
+  <div class="survey-link" id="surveyLink">
+    <a href="https://naver.me/FZ8X1BRc" target="_blank">📝 설문조사 참여하기</a>
+  </div>
+
+  <div class="controls">
+    <button id="prev">⬅ 이전</button>
+    <button id="play">자동넘김 ▶</button>
+    <button id="pause">일시정지 ⏸</button>
+    <button id="next">다음 ➡</button>
+  </div>
+
+  <!-- Audio Controls -->
+  <div class="audio-controls" id="audioControls" aria-live="polite">
+    <button id="audioMute" aria-label="음소거 토글">🔊</button>
+    <button id="audioPlayPause" aria-label="일시정지/재생">⏸️</button>
+    <div class="audio-status">
+      <span class="speaker" id="speakerIcon">🔊</span>
+      <span class="spinner" id="audioSpinner" aria-hidden="true"></span>
+    </div>
+    <input type="range" id="audioProgress" min="0" max="100" value="0" step="1" aria-label="진행률">
+    <span id="audioTime" class="audio-time" aria-hidden="true">0:00 / 0:00</span>
+  </div>
+
+  <!-- Page audio (hidden) -->
+  <audio id="pageAudio" preload="auto" crossorigin="anonymous"></audio>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/blasten/turn.js/turn.min.js"></script>
+
+  <script>
+    window.addEventListener('load', function() {
+      const $flipbook = $('#flipbook');
+      const surveyLink = document.getElementById('surveyLink');
+      const lazyImages = Array.from(document.querySelectorAll('#flipbook img.lazy-img'));
+      // Audio UI elements
+      const pageAudio = document.getElementById('pageAudio');
+      const btnMute = document.getElementById('audioMute');
+      const btnPlayPause = document.getElementById('audioPlayPause');
+      const speakerIcon = document.getElementById('speakerIcon');
+      const audioSpinner = document.getElementById('audioSpinner');
+      const audioProgress = document.getElementById('audioProgress');
+      const audioTime = document.getElementById('audioTime');
+      let userInteracted = false;
+      let suppressAutoFlip = false;
+      const autoAdvanceEnabled = true; // change to false to disable auto next
+
+      const getAudioForPage = (page) => {
+        // 1..10 => voice{n}.mp3
+        if (page >= 1 && page <= 10) return `voice${page}.mp3`;
+        return null;
+      };
+
+      function formatTime(sec) {
+        if (!isFinite(sec)) return '0:00';
+        const m = Math.floor(sec / 60);
+        const s = Math.floor(sec % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
+      }
+
+      function setLoading(isLoading) {
+        audioSpinner.classList.toggle('loading', !!isLoading);
+      }
+
+      function setPlaying(isPlaying) {
+        speakerIcon.classList.toggle('playing', !!isPlaying);
+        btnPlayPause.textContent = isPlaying ? '⏸️' : '▶️';
+      }
+
+      function updateProgressUI() {
+        if (!pageAudio.duration || !isFinite(pageAudio.duration)) {
+          audioTime.textContent = '0:00 / 0:00';
+          audioProgress.value = 0;
+          return;
+        }
+        audioTime.textContent = `${formatTime(pageAudio.currentTime)} / ${formatTime(pageAudio.duration)}`;
+        const pct = (pageAudio.currentTime / pageAudio.duration) * 100;
+        audioProgress.value = Math.max(0, Math.min(100, Math.round(pct)));
+      }
+
+      function playVoiceForPage(page) {
+        const src = getAudioForPage(page);
+        try { pageAudio.pause(); } catch (_) {}
+        pageAudio.currentTime = 0;
+        setPlaying(false);
+        setLoading(false);
+        if (!src) { suppressAutoFlip = false; return; }
+        if (!userInteracted) {
+          // preload only, wait for first user gesture
+          pageAudio.src = src;
+          setLoading(true);
+          pageAudio.load();
+          return;
+        }
+        setLoading(true);
+        pageAudio.src = src;
+        pageAudio.play().then(() => {
+          setLoading(false);
+          setPlaying(true);
+          suppressAutoFlip = true;
+        }).catch(() => {
+          setLoading(false);
+          setPlaying(false);
+        });
+      }
+
+      function toggleMute() {
+        pageAudio.muted = !pageAudio.muted;
+        btnMute.textContent = pageAudio.muted ? '🔇' : '🔊';
+      }
+
+      function togglePlayPause() {
+        if (pageAudio.paused) {
+          pageAudio.play().then(() => setPlaying(true)).catch(() => {});
+        } else {
+          pageAudio.pause();
+          setPlaying(false);
+        }
+      }
+      
+      // 정확한 크기 계산
+      const flipbookWidth = $flipbook.width();
+      const flipbookHeight = $flipbook.height();
+      
+      // turn.js 초기화
+      $flipbook.turn({
+        width: flipbookWidth,
+        height: flipbookHeight,
+        autoCenter: true,
+        display: 'single',
+        acceleration: true,
+        gradients: true,
+        elevation: 50,
+        duration: 600
+      });
+
+      // 페이지 변경 시 설문조사 링크 표시/숨김
+      $flipbook.bind('turned', function(event, page) {
+        const totalPages = $flipbook.turn('pages');
+        if (page === totalPages) {
+          surveyLink.classList.add('show');
+        } else {
+          surveyLink.classList.remove('show');
+        }
+        // 페이지 전환 시 음성 재생
+        playVoiceForPage(page);
+      });
+
+      // 윈도우 리사이즈 대응
+      let resizeTimer;
+      $(window).on('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+          const currentPage = $flipbook.turn('page');
+          const newWidth = $flipbook.parent().width();
+          const newHeight = $flipbook.parent().height();
+          
+          $flipbook.turn('size', newWidth, newHeight);
+          $flipbook.turn('page', currentPage);
+        }, 250);
+      });
+
+      // 이전/다음 버튼
+      document.getElementById('prev').addEventListener('click', () => {
+        $flipbook.turn('previous');
+      });
+      
+      document.getElementById('next').addEventListener('click', () => {
+        $flipbook.turn('next');
+      });
+
+      // 자동 넘김
+      let autoFlip;
+      document.getElementById('play').addEventListener('click', () => {
+        clearInterval(autoFlip);
+        autoFlip = setInterval(() => {
+          if (suppressAutoFlip) return; // 음성 재생 중에는 대기
+          if ($flipbook.turn('page') === $flipbook.turn('pages')) {
+            $flipbook.turn('page', 1);
+          } else {
+            $flipbook.turn('next');
+          }
+        }, 5000);
+      });
+
+      document.getElementById('pause').addEventListener('click', () => {
+        clearInterval(autoFlip);
+      });
+
+      // 키보드 단축키
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') $flipbook.turn('previous');
+        if (e.key === 'ArrowRight') $flipbook.turn('next');
+        if ((e.code === 'Space' || e.key === ' ') && userInteracted) { e.preventDefault(); togglePlayPause(); }
+      });
+
+      // Lazy loading with progress
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const img = entry.target;
+          const wrapper = img.closest('.img-wrapper');
+          const loadingEl = wrapper ? wrapper.querySelector('.img-loading .bar') : null;
+          const url = img.getAttribute('data-src');
+          if (!url) return;
+          io.unobserve(img);
+
+          // Stream fetch to track progress
+          fetch(url, { cache: 'force-cache' }).then(async (res) => {
+            if (!res.ok || !res.body) {
+              img.src = url;
+              img.onload = () => {
+                img.classList.add('is-loaded');
+                if (loadingEl) loadingEl.style.width = '100%';
+                const overlay = wrapper && wrapper.querySelector('.img-loading');
+                if (overlay) overlay.remove();
+              };
+              return;
+            }
+            const contentLength = Number(res.headers.get('Content-Length')) || 0;
+            const reader = res.body.getReader();
+            const chunks = [];
+            let received = 0;
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              chunks.push(value);
+              received += value.byteLength;
+              if (contentLength && loadingEl) {
+                const pct = Math.min(100, Math.round((received / contentLength) * 100));
+                loadingEl.style.width = pct + '%';
+              }
+            }
+            const blob = new Blob(chunks);
+            const objectUrl = URL.createObjectURL(blob);
+            img.src = objectUrl;
+            img.onload = () => {
+              img.classList.add('is-loaded');
+              if (loadingEl) loadingEl.style.width = '100%';
+              const overlay = wrapper && wrapper.querySelector('.img-loading');
+              if (overlay) overlay.remove();
+              // Release after image decodes
+              setTimeout(() => URL.revokeObjectURL(objectUrl), 5000);
+            };
+          }).catch(() => {
+            // Fallback: direct src
+            img.src = url;
+            img.onload = () => {
+              img.classList.add('is-loaded');
+              if (loadingEl) loadingEl.style.width = '100%';
+              const overlay = wrapper && wrapper.querySelector('.img-loading');
+              if (overlay) overlay.remove();
+            };
+          });
+        });
+      }, { root: document.querySelector('#flipbook'), rootMargin: '200px', threshold: 0.01 });
+
+      lazyImages.forEach((img) => io.observe(img));
+
+      // Service worker registration with enhanced offline support
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js')
+          .then((registration) => {
+            console.log('Service Worker registered successfully:', registration.scope);
+            
+            // 업데이트 확인
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  // 새 버전이 설치되었을 때 사용자에게 알림
+                  if (confirm('새로운 버전이 사용 가능합니다. 지금 업데이트하시겠습니까?')) {
+                    window.location.reload();
+                  }
+                }
+              });
+            });
+          })
+          .catch((error) => {
+            console.error('Service Worker registration failed:', error);
+          });
+
+        // 오프라인 상태 감지
+        // 연결 상태 표시 요소
+        const connectionStatus = document.getElementById('connectionStatus');
+        const statusText = document.getElementById('statusText');
+
+        // 연결 상태 업데이트 함수
+        function updateConnectionStatus() {
+          if (navigator.onLine) {
+            connectionStatus.style.display = 'none';
+            connectionStatus.classList.remove('online');
+          } else {
+            connectionStatus.style.display = 'block';
+            statusText.textContent = '오프라인';
+            connectionStatus.classList.remove('online');
+          }
+        }
+
+        window.addEventListener('online', () => {
+          console.log('온라인 상태로 복구됨');
+          connectionStatus.style.display = 'block';
+          statusText.textContent = '온라인';
+          connectionStatus.classList.add('online');
+          
+          // 3초 후 상태 표시 숨김
+          setTimeout(() => {
+            connectionStatus.style.display = 'none';
+          }, 3000);
+          
+          // 온라인 상태 복구 시 캐시 업데이트
+          if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({ action: 'updateCache' });
+          }
+        });
+
+        window.addEventListener('offline', () => {
+          console.log('오프라인 상태');
+          updateConnectionStatus();
+        });
+
+        // 초기 연결 상태 설정
+        updateConnectionStatus();
+      }
+      // 첫 페이지 오디오 로드/재생 시도 (iOS는 첫 상호작용 후 재생)
+      playVoiceForPage(1);
+
+      // 사용자 첫 상호작용 감지 (모바일 autoplay 허용)
+      ['click','touchstart','keydown'].forEach((evt) => {
+        window.addEventListener(evt, () => { userInteracted = true; }, { once: true, passive: true });
+      });
+
+      // 오디오 이벤트 바인딩
+      pageAudio.addEventListener('loadstart', () => setLoading(true));
+      pageAudio.addEventListener('loadedmetadata', () => { setLoading(false); updateProgressUI(); });
+      pageAudio.addEventListener('timeupdate', updateProgressUI);
+      pageAudio.addEventListener('play', () => { setPlaying(true); suppressAutoFlip = true; });
+      pageAudio.addEventListener('pause', () => setPlaying(false));
+      pageAudio.addEventListener('ended', () => {
+        setPlaying(false);
+        suppressAutoFlip = false;
+        updateProgressUI();
+        if (true) { // autoAdvanceEnabled
+          if ($flipbook.turn('page') !== $flipbook.turn('pages')) {
+            $flipbook.turn('next');
+          }
+        }
+      });
+      pageAudio.addEventListener('error', () => {
+        setLoading(false);
+        setPlaying(false);
+        try { alert('음성 로딩 실패: 파일이 없거나 네트워크 오류입니다.'); } catch (_) {}
+      });
+
+      // UI 컨트롤 이벤트
+      document.getElementById('audioMute').addEventListener('click', () => { userInteracted = true; pageAudio.muted = !pageAudio.muted; document.getElementById('audioMute').textContent = pageAudio.muted ? '🔇' : '🔊'; });
+      document.getElementById('audioPlayPause').addEventListener('click', () => { userInteracted = true; togglePlayPause(); });
+      document.getElementById('audioProgress').addEventListener('input', () => {
+        if (!pageAudio.duration || !isFinite(pageAudio.duration)) return;
+        const target = (document.getElementById('audioProgress').value / 100) * pageAudio.duration;
+        pageAudio.currentTime = target;
+        updateProgressUI();
+      });
+    });
+  </script>
+</body>
+</html>
